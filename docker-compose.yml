@@ -1,0 +1,49 @@
+services:
+  mysql-user:
+    image: mysql:8.0.0
+    container_name: mysql-user
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: user_db
+      MYSQL_USER: user_user
+      MYSQL_PASSWORD: user_pass
+    ports:
+      - "3310:3306"  # Porta local:porta do container
+    volumes:
+      - mysql-user-data:/var/lib/mysql
+    networks:
+      - user-network
+    command: --disable-ssl --skip-ssl
+
+  user-service:
+    build: .
+    profiles:
+      - application
+    container_name: user-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-user:3306/user_db
+      SPRING_DATASOURCE_USERNAME: user_user
+      SPRING_DATASOURCE_PASSWORD: user_pass
+    depends_on:
+      - mysql-user
+    ports:
+      - "8080:8080"
+    command: >
+      sh -c "
+        echo 'Aguardando MySQL...';
+        until mysqladmin ping -h mysql-user --silent; do
+          echo 'Ainda não disponível...';
+          sleep 2;
+        done;
+        echo 'MySQL pronto! A iniciar aplicação...';
+        java -jar app.jar
+      "
+    networks:
+      - user-network
+
+volumes:
+  mysql-user-data:
+
+networks:
+  user-network:
