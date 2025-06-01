@@ -5,7 +5,6 @@ import java.util.Map;
 import java.util.Optional;
 
 import com.ijse.bookstore.dto.UserRegistrationDto;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -14,7 +13,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,34 +22,35 @@ import org.springframework.web.bind.annotation.RestController;
 import com.ijse.bookstore.dto.LoginDTO;
 import com.ijse.bookstore.entity.User;
 import com.ijse.bookstore.repository.UserRepository;
-import com.ijse.bookstore.service.security.jwt.JwtUtils;
+import com.ijse.bookstore.security.JwtUtils;
 
 @RestController
 public class UserAuthController {
 
-    @Autowired
-    UserRepository userRepository;
+    private final UserRepository userRepository;
 
-    @Autowired
-    PasswordEncoder passwordEncoder;
+    private final PasswordEncoder passwordEncoder;
 
-    @Autowired
-    JwtUtils jwtUtils;
+    private final JwtUtils jwtUtils;
 
-    @Autowired
-    AuthenticationManager authenticationManager;
+    private final AuthenticationManager authenticationManager;
+
+    public UserAuthController(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtils jwtUtils, AuthenticationManager authenticationManager) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtUtils = jwtUtils;
+        this.authenticationManager = authenticationManager;
+    }
 
     @PostMapping("/auth/register")
-    public ResponseEntity<?> registierUser(@RequestBody UserRegistrationDto user){
-        
-        if(userRepository.existsByUsername(user.getUsername())){
+    public ResponseEntity<?> registerUser(@RequestBody UserRegistrationDto user) {
 
+        if (userRepository.existsByUsername(user.getUsername())) {
             return ResponseEntity.badRequest().body("Username already exists");
 
         }
 
-        if(userRepository.existsByEmail(user.getEmail())){
-
+        if (userRepository.existsByEmail(user.getEmail())) {
             return ResponseEntity.badRequest().body("Email is already being used");
 
         }
@@ -62,7 +61,6 @@ public class UserAuthController {
         newUser.setEmail(user.getEmail());
         newUser.setPassword(passwordEncoder.encode(user.getPassword()));
 
-        
         userRepository.save(newUser);
 
         return ResponseEntity.ok(Map.of("message", user));
@@ -70,24 +68,10 @@ public class UserAuthController {
     }
 
     @PostMapping("/auth/login")
-    public ResponseEntity<?> login(@RequestBody LoginDTO loginDTO){
-    /*@PostMapping("/auth/login") → Indica que este metodo responde a requisições HTTP POST na rota /auth/login
-    * ResponseEntity<?> → Representa a resposta HTTP que este metodo vai devolver. O <?> significa que pode retornar qualquer tipo de dado (String, JSON, etc.)
-    *
-    * */
-
+    public ResponseEntity<?> login(@RequestBody LoginDTO loginDTO) {
         try {
-            Authentication authentication =authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginDTO.getUsername(), loginDTO.getPassword())
-            /*
-            O utilizador enviou username e password.
-            Criamos um UsernamePasswordAuthenticationToken com essas credenciais.
-            Passamos esse token ao authenticationManager, que verifica se as credenciais estão corretas.
-            📌 O que acontece nos bastidores?
-
-            O authenticationManager vai procurar o utilizador na base de dados.
-            Se o utilizador existir e a password for igual à que está guardada na base de dados, a autenticação é bem-sucedida.
-            Se a password estiver errada ou o utilizador não existir, lança um erro BadCredentialsException*/
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(loginDTO.getUsername(), loginDTO.getPassword())
             );
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -105,20 +89,20 @@ public class UserAuthController {
 
 
     @GetMapping("/user")
-    public ResponseEntity<List<User>> getAllUser(){
+    public ResponseEntity<List<User>> getAllUsers() {
 
         List<User> existUser = userRepository.findAll();
 
 
-        return new ResponseEntity<>(existUser,HttpStatus.OK);
-        
+        return new ResponseEntity<>(existUser, HttpStatus.OK);
+
     }
 
     @GetMapping("/username/{username}")
     public ResponseEntity<Optional<User>> getUserIdByUsername(@PathVariable String username) {
         Optional<User> userId = userRepository.findByUsername(username);
 
-        if (userId != null) {
+        if (userId.isPresent()) {
             return ResponseEntity.ok(userId);
         } else {
             return ResponseEntity.notFound().build();
