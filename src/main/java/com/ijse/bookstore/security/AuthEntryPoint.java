@@ -1,4 +1,4 @@
-package com.ijse.bookstore.service.security.jwt;
+package com.ijse.bookstore.security;
 
 import java.io.IOException;
 

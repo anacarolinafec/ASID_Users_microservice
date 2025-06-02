@@ -1,6 +1,6 @@
-package com.ijse.bookstore.service.security;
+package com.ijse.bookstore.security;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import com.ijse.bookstore.service.UserServiceImpl;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -15,38 +15,25 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import com.ijse.bookstore.service.security.jwt.AuthEntryPoint;
-import com.ijse.bookstore.service.security.jwt.AuthTokenFilter;
-
 @Configuration
 @EnableMethodSecurity
-public class WebSecurityConfig{
-    
-    @Autowired
-    private UserServiceImpl userServiceImpl;
-
-    @Autowired
-    private AuthEntryPoint unauthorizedHandler;
+public class WebSecurityConfig {
 
     @Bean
-    public UserDetailsService userDetailsService (){
-
+    public UserDetailsService userDetailsService(UserServiceImpl userServiceImpl) {
         return userServiceImpl;
     }
 
     @Bean
-    public AuthTokenFilter authenticationJwTokenFilter(){
+    public AuthTokenFilter authenticationJwTokenFilter() {
         return new AuthTokenFilter();
     }
 
-    @Bean 
-    public DaoAuthenticationProvider authenticationProvider(){
-
+    @Bean
+    public DaoAuthenticationProvider authenticationProvider(UserServiceImpl userServiceImpl) {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-
         authProvider.setUserDetailsService(userServiceImpl);
         authProvider.setPasswordEncoder(passwordEncoder());
-
         return authProvider;
     }
 
@@ -62,14 +49,14 @@ public class WebSecurityConfig{
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, AuthEntryPoint unauthorizedHandler, UserServiceImpl userServiceImpl) throws Exception {
 
-        http.csrf(csrf-> csrf.disable())
-        .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
-        .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-        .authorizeHttpRequests(auth -> auth.requestMatchers("/**").permitAll().anyRequest().authenticated());
-        
-        http.authenticationProvider(authenticationProvider());
+        http.csrf(csrf -> csrf.disable())
+                .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth.requestMatchers("/**").permitAll().anyRequest().authenticated());
+
+        http.authenticationProvider(authenticationProvider(userServiceImpl));
 
         http.addFilterBefore(authenticationJwTokenFilter(), UsernamePasswordAuthenticationFilter.class);
 

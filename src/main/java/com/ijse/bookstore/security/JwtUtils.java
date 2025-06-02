@@ -1,5 +1,4 @@
-package com.ijse.bookstore.service.security.jwt;
-
+package com.ijse.bookstore.security;
 
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
@@ -8,8 +7,6 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-
-
 
 import java.security.Key;
 import java.util.Date;
@@ -21,41 +18,45 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
-
-
 @Component
 public class JwtUtils {
-    
-    @Value("${app.jwtSecret}")
-    private String jwtSecret;
 
-    @Value("${app.jwtExpiration}")
-    private int jwtExpiration;
+    public JwtUtils(
+            @Value("${app.jwtSecret}") String jwtSecret,
+            @Value("${app.jwtExpiration}") int jwtExpiration
+    ) {
+        this.jwtSecret = jwtSecret;
+        this.jwtExpiration = jwtExpiration;
+    }
 
-    public String generationJwtToken(Authentication authentication){
+    private final String jwtSecret;
+
+    private final int jwtExpiration;
+
+    public String generationJwtToken(Authentication authentication) {
         UserDetails userPrincipal = (UserDetails) authentication.getPrincipal();
 
         return Jwts.builder()
-        .setSubject(userPrincipal.getUsername())
-        .setIssuedAt(new Date())
-        .setExpiration(new Date(new Date().getTime() + jwtExpiration))
-        .signWith(key(), SignatureAlgorithm.HS256)
-        .compact();
+                .setSubject(userPrincipal.getUsername())
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(new Date().getTime() + jwtExpiration))
+                .signWith(key(), SignatureAlgorithm.HS256)
+                .compact();
     }
 
-    public Key key(){
+    public Key key() {
         return Keys.hmacShaKeyFor(Decoders.BASE64URL.decode(jwtSecret));
     }
 
     private static final Logger logger = LoggerFactory.getLogger(JwtUtils.class);
 
-    public boolean validateJwtToken(String authToken){
+    public boolean validateJwtToken(String authToken) {
 
-        try{
+        try {
             Jwts.parserBuilder().setSigningKey(key()).build().parse(authToken);
 
             return true;
-        } catch (MalformedJwtException e){
+        } catch (MalformedJwtException e) {
             logger.error("Invalid JWT Token: {}", e.getMessage());
         } catch (ExpiredJwtException e) {
             logger.error("Token expired: {}", e.getMessage());
@@ -68,10 +69,8 @@ public class JwtUtils {
         return false;
     }
 
-    public String getUsernameFromJwt(String authToken){
+    public String getUsernameFromJwt(String authToken) {
 
         return Jwts.parserBuilder().setSigningKey(key()).build().parseClaimsJws(authToken).getBody().getSubject();
     }
-
-  
 }
